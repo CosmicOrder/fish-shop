@@ -10,19 +10,13 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 from telegram.ext import Filters, Updater
 
-from molti_api_requests import get_all_products, get_access_token
+from molti_api_requests import get_all_products, get_access_token, get_product
 from utils import built_product_list
 
 _database = None
 
 
-def start(bot, update, access_token):
-    """
-    Хэндлер для состояния START.
-
-    Бот отвечает пользователю фразой "Привет!" и переводит его в состояние ECHO.
-    Теперь в ответ на его команды будет запускаеться хэндлер echo.
-    """
+def start(update, context, access_token):
     products = get_all_products(access_token)['data']
     product_ids = [product['id'] for product in products]
     product_names = [product['attributes']['name'] for product in products]
@@ -37,30 +31,25 @@ def start(bot, update, access_token):
     reply_markup = InlineKeyboardMarkup(built_product_list(keyboard, 2))
 
     update.message.reply_text(text='Привет!', reply_markup=reply_markup)
-    return "ECHO"
+    return "HANDLE_MENU"
 
 
-def button(bot, update):
-    query = update.callback_query
+def handle_menu(update, context, access_token):
+    product_id = update.callback_query.data
+    product = get_product(access_token, product_id)
+    product_name = product['data']['attributes']['name']
+    description = product['data']['attributes']['description']
+    price = product['data']['meta']['display_price']['without_tax']['formatted']
 
-    bot.edit_message_text(text="Product_id: {}".format(query.data),
-                          chat_id=query.message.chat_id,
-                          message_id=query.message.message_id)
-
-
-def echo(bot, update):
-    """
-    Хэндлер для состояния ECHO.
-
-    Бот отвечает пользователю тем же, что пользователь ему написал.
-    Оставляет пользователя в состоянии ECHO.
-    """
-    users_reply = update.message.text
-    update.message.reply_text(users_reply)
-    return "ECHO"
+    context.bot.edit_message_text(
+        text=f'{product_name}\n\n{description}\n\n{price}',
+        chat_id=update.effective_chat.id,
+        message_id=update.effective_message.message_id,
+        )
+    return "START"
 
 
-def handle_users_reply(bot, update, access_token):
+def handle_users_reply(update, context, access_token):
     """
     Функция, которая запускается при любом сообщении от пользователя и решает как его обработать.
     Эта функция запускается в ответ на эти действия пользователя:
@@ -89,19 +78,19 @@ def handle_users_reply(bot, update, access_token):
 
     states_functions = {
         'START': start,
-        'ECHO': echo
+        'HANDLE_MENU': handle_menu,
     }
 
     state_handler = states_functions[user_state]
-    if user_state == 'START':
+    if user_state in ('START', 'HANDLE_MENU'):
         try:
-            next_state = state_handler(bot, update, access_token)
+            next_state = state_handler(update, context, access_token)
             db.set(chat_id, next_state)
         except Exception as err:
             print(err)
     else:
         try:
-            next_state = state_handler(bot, update)
+            next_state = state_handler(update, context)
             db.set(chat_id, next_state)
         except Exception as err:
             print(err)
@@ -131,7 +120,6 @@ def main():
 
     updater = Updater(fish_shop_tg_token)
     dispatcher = updater.dispatcher
-    dispatcher.add_handler(CallbackQueryHandler(button))
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply_partial))
     dispatcher.add_handler(MessageHandler(Filters.text,
                                           handle_users_reply_partial))
