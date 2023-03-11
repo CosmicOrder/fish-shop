@@ -1,29 +1,40 @@
 """
 Работает с этими модулями:
 """
+import functools
 import os
+
 import redis
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-
-from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
+from telegram.ext import Filters, Updater
+
+from molti_api_requests import get_all_products, get_access_token
+from utils import built_product_list
 
 _database = None
 
 
-def start(bot, update):
+def start(bot, update, access_token):
     """
     Хэндлер для состояния START.
 
     Бот отвечает пользователю фразой "Привет!" и переводит его в состояние ECHO.
     Теперь в ответ на его команды будет запускаеться хэндлер echo.
     """
-    keyboard = [[InlineKeyboardButton("Option 1", callback_data='1'),
-                 InlineKeyboardButton("Option 2", callback_data='2')],
-                [InlineKeyboardButton("Option 3", callback_data='3')]]
+    products = get_all_products(access_token)['data']
+    product_ids = [product['id'] for product in products]
+    product_names = [product['attributes']['name'] for product in products]
+    product_ids_and_names = dict(zip(product_ids, product_names))
 
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    keyboard = [
+        InlineKeyboardButton(
+            product_name, callback_data=product_id) for
+        product_id, product_name in product_ids_and_names.items()
+    ]
+
+    reply_markup = InlineKeyboardMarkup(built_product_list(keyboard, 2))
 
     update.message.reply_text(text='Привет!', reply_markup=reply_markup)
     return "ECHO"
@@ -32,7 +43,7 @@ def start(bot, update):
 def button(bot, update):
     query = update.callback_query
 
-    bot.edit_message_text(text="Selected option: {}".format(query.data),
+    bot.edit_message_text(text="Product_id: {}".format(query.data),
                           chat_id=query.message.chat_id,
                           message_id=query.message.message_id)
 
@@ -49,7 +60,7 @@ def echo(bot, update):
     return "ECHO"
 
 
-def handle_users_reply(bot, update):
+def handle_users_reply(bot, update, access_token):
     """
     Функция, которая запускается при любом сообщении от пользователя и решает как его обработать.
     Эта функция запускается в ответ на эти действия пользователя:
@@ -80,15 +91,20 @@ def handle_users_reply(bot, update):
         'START': start,
         'ECHO': echo
     }
+
     state_handler = states_functions[user_state]
-    # Если вы вдруг не заметите, что python-telegram-bot перехватывает ошибки.
-    # Оставляю этот try...except, чтобы код не падал молча.
-    # Этот фрагмент можно переписать.
-    try:
-        next_state = state_handler(bot, update)
-        db.set(chat_id, next_state)
-    except Exception as err:
-        print(err)
+    if user_state == 'START':
+        try:
+            next_state = state_handler(bot, update, access_token)
+            db.set(chat_id, next_state)
+        except Exception as err:
+            print(err)
+    else:
+        try:
+            next_state = state_handler(bot, update)
+            db.set(chat_id, next_state)
+        except Exception as err:
+            print(err)
 
 
 def get_database_connection():
@@ -105,13 +121,23 @@ def get_database_connection():
     return _database
 
 
-if __name__ == '__main__':
+def main():
     load_dotenv()
-    token = os.getenv("TELEGRAM_TOKEN")
-    updater = Updater(token)
+    fish_shop_tg_token = os.getenv('FISH_SHOP_TG_TOKEN')
+    moltin_client_id = os.getenv('MOLTIN_CLIENT_ID')
+    access_token = get_access_token(moltin_client_id)
+    handle_users_reply_partial = functools.partial(handle_users_reply,
+                                                   access_token=access_token)
+
+    updater = Updater(fish_shop_tg_token)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(button))
-    dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
-    dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
-    dispatcher.add_handler(CommandHandler('start', handle_users_reply))
+    dispatcher.add_handler(CallbackQueryHandler(handle_users_reply_partial))
+    dispatcher.add_handler(MessageHandler(Filters.text,
+                                          handle_users_reply_partial))
+    dispatcher.add_handler(CommandHandler('start', handle_users_reply_partial))
     updater.start_polling()
+
+
+if __name__ == '__main__':
+    main()
