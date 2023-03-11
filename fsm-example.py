@@ -9,6 +9,9 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Filters, Updater
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 
+import utils
+from api_requests import get_all_products, get_access_token
+
 _database = None
 
 
@@ -19,9 +22,9 @@ def start(bot, update):
     Бот отвечает пользователю фразой "Привет!" и переводит его в состояние ECHO.
     Теперь в ответ на его команды будет запускаеться хэндлер echo.
     """
-    keyboard = [[InlineKeyboardButton("Option 1", callback_data='1'),
-                 InlineKeyboardButton("Option 2", callback_data='2')],
-                [InlineKeyboardButton("Option 3", callback_data='3')]]
+
+
+    keyboard = [InlineKeyboardButton(i) for i in]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -81,9 +84,6 @@ def handle_users_reply(bot, update):
         'ECHO': echo
     }
     state_handler = states_functions[user_state]
-    # Если вы вдруг не заметите, что python-telegram-bot перехватывает ошибки.
-    # Оставляю этот try...except, чтобы код не падал молча.
-    # Этот фрагмент можно переписать.
     try:
         next_state = state_handler(bot, update)
         db.set(chat_id, next_state)
@@ -105,13 +105,22 @@ def get_database_connection():
     return _database
 
 
-if __name__ == '__main__':
+def main():
     load_dotenv()
-    token = os.getenv("TELEGRAM_TOKEN")
-    updater = Updater(token)
+    fish_shop_tg_token = os.getenv("FISH_SHOP_TG_TOKEN")
+    moltin_client_id = os.getenv('MOLTIN_CLIENT_ID')
+    access_token = get_access_token(moltin_client_id)
+
+
+
+    updater = Updater(fish_shop_tg_token)
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CallbackQueryHandler(button))
     dispatcher.add_handler(CallbackQueryHandler(handle_users_reply))
     dispatcher.add_handler(MessageHandler(Filters.text, handle_users_reply))
     dispatcher.add_handler(CommandHandler('start', handle_users_reply))
     updater.start_polling()
+
+
+if __name__ == '__main__':
+    main()
