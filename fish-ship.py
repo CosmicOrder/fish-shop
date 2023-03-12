@@ -10,7 +10,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 from telegram.ext import Filters, Updater
 
-from molti_api_requests import get_all_products, get_access_token, get_product
+from molti_api_requests import get_all_products, get_access_token, get_product, \
+    get_product_main_image_id, download_product_main_image
 from utils import built_product_list
 
 _database = None
@@ -29,23 +30,35 @@ def start(update, context, access_token):
     ]
 
     reply_markup = InlineKeyboardMarkup(built_product_list(keyboard, 2))
+    message_text = 'Привет!\nКакой товар интересует?'
 
-    update.message.reply_text(text='Привет!', reply_markup=reply_markup)
+    update.message.reply_text(text=message_text, reply_markup=reply_markup)
     return "HANDLE_MENU"
 
 
 def handle_menu(update, context, access_token):
     product_id = update.callback_query.data
-    product = get_product(access_token, product_id)
-    product_name = product['data']['attributes']['name']
-    description = product['data']['attributes']['description']
-    price = product['data']['meta']['display_price']['without_tax']['formatted']
+    main_image_id = get_product_main_image_id(access_token, product_id)
+    main_image_path = download_product_main_image(access_token, main_image_id)
 
-    context.bot.edit_message_text(
-        text=f'{product_name}\n\n{description}\n\n{price}',
+    with open(main_image_path, 'rb') as image:
+        main_image = image.read()
+
+    product = get_product(access_token, product_id)['data']
+    product_name = product['attributes']['name']
+    description = product['attributes']['description']
+    price = product['meta']['display_price']['without_tax']['formatted']
+
+    context.bot.delete_message(
         chat_id=update.effective_chat.id,
         message_id=update.effective_message.message_id,
-        )
+    )
+
+    context.bot.send_photo(
+        chat_id=update.effective_chat.id,
+        photo=main_image,
+        caption=f'{product_name}\n\n{description}\n\n{price}',
+    )
     return "START"
 
 
@@ -114,7 +127,8 @@ def main():
     load_dotenv()
     fish_shop_tg_token = os.getenv('FISH_SHOP_TG_TOKEN')
     moltin_client_id = os.getenv('MOLTIN_CLIENT_ID')
-    access_token = get_access_token(moltin_client_id)
+    client_secret = os.getenv('MOLTIN_CLIENT_SECRET')
+    access_token = get_access_token(moltin_client_id, client_secret)
     handle_users_reply_partial = functools.partial(handle_users_reply,
                                                    access_token=access_token)
 
