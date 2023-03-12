@@ -30,9 +30,13 @@ def start(update, context, access_token):
     ]
 
     reply_markup = InlineKeyboardMarkup(built_product_list(keyboard, 2))
-    message_text = 'Привет!\nКакой товар интересует?'
+    message_text = '\nКакой товар вас интересует?'
 
-    update.message.reply_text(text=message_text, reply_markup=reply_markup)
+    context.bot.send_message(
+        text=message_text,
+        chat_id=update.effective_chat.id,
+        reply_markup=reply_markup,
+    )
     return "HANDLE_MENU"
 
 
@@ -54,12 +58,21 @@ def handle_menu(update, context, access_token):
         message_id=update.effective_message.message_id,
     )
 
+    keyboard = [[InlineKeyboardButton('Назад', callback_data='назад')]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
     context.bot.send_photo(
         chat_id=update.effective_chat.id,
         photo=main_image,
         caption=f'{product_name}\n\n{description}\n\n{price}',
+        reply_markup=reply_markup,
     )
-    return "START"
+    return "HANDLE_DESCRIPTION"
+
+
+def handle_description(update, context, access_token):
+    if update.callback_query.data == 'назад':
+        return start(update, context, access_token)
 
 
 def handle_users_reply(update, context, access_token):
@@ -92,10 +105,11 @@ def handle_users_reply(update, context, access_token):
     states_functions = {
         'START': start,
         'HANDLE_MENU': handle_menu,
+        'HANDLE_DESCRIPTION': handle_description,
     }
 
     state_handler = states_functions[user_state]
-    if user_state in ('START', 'HANDLE_MENU'):
+    if user_state in ('START', 'HANDLE_MENU', 'HANDLE_DESCRIPTION'):
         try:
             next_state = state_handler(update, context, access_token)
             db.set(chat_id, next_state)
