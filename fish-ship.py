@@ -11,7 +11,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler, MessageHandler
 from telegram.ext import Filters, Updater
 
 from molti_api_requests import get_all_products, get_access_token, get_product, \
-    get_product_main_image_id, download_product_main_image
+    get_product_main_image_id, download_product_main_image, add_product_to_cart
 from utils import built_product_list
 
 _database = None
@@ -58,7 +58,14 @@ def handle_menu(update, context, access_token):
         message_id=update.effective_message.message_id,
     )
 
-    keyboard = [[InlineKeyboardButton('Назад', callback_data='назад')]]
+    keyboard = [
+        [
+             InlineKeyboardButton('1 упаковка', callback_data=f'{product_id}_1'),
+             InlineKeyboardButton('3 упаковки', callback_data=f'{product_id}_3'),
+             InlineKeyboardButton('5 упаковок', callback_data=f'{product_id}_5')
+        ],
+        [InlineKeyboardButton('Назад', callback_data='назад')]
+    ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     context.bot.send_photo(
@@ -73,6 +80,18 @@ def handle_menu(update, context, access_token):
 def handle_description(update, context, access_token):
     if update.callback_query.data == 'назад':
         return start(update, context, access_token)
+    else:
+        user_id = update.callback_query.from_user.id
+        product_id, quantity = update.callback_query.data.split('_')
+        quantity = int(quantity)
+
+        add_product_to_cart(
+            access_token,
+            product_id=product_id,
+            quantity=quantity,
+            card_id=user_id,
+        )
+        return "HANDLE_DESCRIPTION"
 
 
 def handle_users_reply(update, context, access_token):
