@@ -24,7 +24,9 @@ def menu(update, context, access_token):
 
     Бот демонстрирует пользователю перечень доступных для покупки продуктов и
     переводит его в состояние HANDLE_MENU.
-    Теперь в ответ на его команды будет запускаеться хэндлер handle_menu.
+
+    Теперь в ответ на действия пользователя будет запускаеться хэндлер
+    handle_menu.
     """
     products = get_all_products(access_token)['data']
     product_ids = [product['id'] for product in products]
@@ -57,9 +59,11 @@ def handle_menu(update, context, access_token):
     """
     Хэндлер для состояния HANDLE_MENU.
 
-    Бот отправляет пользователю подробное описание выбранного продукта и
-    переводит его в состояние HANDLE_DESCRIPTION, если пользователь выберет
-    необходимое для покупки количество товара.
+    Если пользователь выбрал товар, то бот отправляет фото и описание
+    выбранного товара и переводит его в состояние HANDLE_DESCRIPTION.
+
+    Если пользователь нажал кнопку "Корзина", то отправляет ему описание
+    содержимого корзины и переводит его в состояние HANDLE_CART.
     """
     if update.callback_query.data != 'корзина':
         product_id = update.callback_query.data
@@ -122,25 +126,28 @@ def handle_menu(update, context, access_token):
             text=message_text,
             chat_id=update.effective_chat.id,
         )
+        return "HANDLE_CART"
 
 
 def handle_description(update, context, access_token):
     """
-    Функция, которая запускается при любом сообщении от пользователя и решает как его обработать.
-    Эта функция запускается в ответ на эти действия пользователя:
-        * Нажатие на inline-кнопку в боте
-        * Отправка сообщения боту
-        * Отправка команды боту
-    Она получает стейт пользователя из базы данных и запускает соответствующую функцию-обработчик (хэндлер).
-    Функция-обработчик возвращает следующее состояние, которое записывается в базу данных.
-    Если пользователь только начал пользоваться ботом, Telegram форсит его написать "/start",
-    поэтому по этой фразе выставляется стартовое состояние.
-    Если пользователь захочет начать общение с ботом заново, он также может воспользоваться этой командой.
+    Хэндлер для состояния HANDLE_DESCRIPTION.
+
+    Если пользователь выбрал один из вариантов кол-ва товара, то добавляет
+    товар в указанном кол-ве в корзину и оставляет его в состоянии
+    HANDLE_DESCRIPTION.
+
+    Если пользователь нажал кнопку "Корзина", то отправляет ему описание
+    содержимого корзины и переводит его в состояние HANDLE_CART.
+
+    Если пользователь нажал кнопку "Меню", то бот выводит на экран
+    исходный перечень продуктов и переводит его в состояние HANDLE_MENU.
+
     """
     if update.callback_query.data == 'в меню':
         return menu(update, context, access_token)
     elif update.callback_query.data == 'корзина':
-        handle_menu(update, context, access_token)
+        return handle_menu(update, context, access_token)
     else:
         user_id = update.callback_query.from_user.id
         product_id, quantity = update.callback_query.data.split('_')
@@ -153,6 +160,17 @@ def handle_description(update, context, access_token):
             card_id=user_id,
         )
         return "HANDLE_DESCRIPTION"
+
+
+def handler_cart(update, context, access_token):
+    """
+    Хэндлер для состояния HANDLE_MENU.
+
+    Бот отправляет пользователю подробное описание выбранного продукта и
+    переводит его в состояние HANDLE_DESCRIPTION, если пользователь выберет
+    необходимое для покупки количество товара.
+    """
+    pass
 
 
 def handle_users_reply(update, context, access_token):
@@ -186,10 +204,11 @@ def handle_users_reply(update, context, access_token):
         'MENU': menu,
         'HANDLE_MENU': handle_menu,
         'HANDLE_DESCRIPTION': handle_description,
+        'HANDLE_CART ': handler_cart,
     }
 
     state_handler = states_functions[user_state]
-    if user_state in ('MENU', 'HANDLE_MENU', 'HANDLE_DESCRIPTION'):
+    if user_state in ('MENU', 'HANDLE_MENU', 'HANDLE_DESCRIPTION', 'HANDLE_CART'):
         try:
             next_state = state_handler(update, context, access_token)
             db.set(chat_id, next_state)
