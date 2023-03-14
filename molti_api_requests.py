@@ -101,7 +101,7 @@ def add_product_to_cart(
         access_token,
         product_id,
         quantity,
-        card_id='abc',
+        card_id=697013533,
 ):
     url = f'https://api.moltin.com/v2/carts/{card_id}/items'
 
@@ -119,7 +119,36 @@ def add_product_to_cart(
 
     response = requests.post(url, headers=headers, json=payload)
     response.raise_for_status()
-    pprint(response.json())
+    return response.json()
+
+
+def get_cart_items(
+        access_token,
+        card_id=697013533,
+):
+    url = f'https://api.moltin.com/v2/carts/{card_id}/items'
+
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
+    return response.json()
+
+
+def get_cart(
+        access_token,
+        card_id=697013533,
+):
+    url = f'https://api.moltin.com/v2/carts/{card_id}'
+
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+
+    response = requests.get(url, headers=headers)
+    response.raise_for_status()
     return response.json()
 
 
@@ -129,9 +158,9 @@ if __name__ == '__main__':
     moltin_client_secret = os.getenv('MOLTIN_CLIENT_SECRET')
 
     token = get_access_token(moltin_client_id, moltin_client_secret)
-    product_id = '66f1bca0-a9a8-445d-b0c1-1f1ba4f65492'
+    # product_id = '66f1bca0-a9a8-445d-b0c1-1f1ba4f65492'
 
-    get_all_products(token)
-    get_product(token, product_id)
-    main_image_id = get_product_main_image_id(token, product_id)
-    download_product_main_image(token, main_image_id)
+    # get_all_products(token)
+    # get_product(token, product_id)
+    # main_image_id = get_product_main_image_id(token, product_id)
+    # download_product_main_image(token, main_image_id)
