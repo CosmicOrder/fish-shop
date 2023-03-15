@@ -1,7 +1,11 @@
+from typing import Union, List
+from telegram import InlineKeyboardButton
+
+
 def built_menu(
-        buttons,
-        n_cols,
-        footer_buttons=None,
+        buttons: List[InlineKeyboardButton],
+        n_cols: int,
+        footer_buttons: Union[InlineKeyboardButton, List[InlineKeyboardButton]]=None,
 ):
     menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
     if footer_buttons:

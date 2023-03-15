@@ -33,17 +33,16 @@ def menu(update, context, access_token):
     product_names = [product['attributes']['name'] for product in products]
     product_ids_and_names = dict(zip(product_ids, product_names))
 
-    keyboard = [
+    buttons = [
         InlineKeyboardButton(
             product_name, callback_data=product_id) for
         product_id, product_name in product_ids_and_names.items()
     ]
 
     reply_markup = InlineKeyboardMarkup(built_menu(
-        keyboard,
-        2,
-        footer_buttons=[
-            InlineKeyboardButton('Корзина', callback_data='cart')])
+        buttons=buttons,
+        n_cols=2,
+        footer_buttons=[InlineKeyboardButton('Корзина', callback_data='cart')])
     )
     message_text = '\nКакой товар вас интересует?'
 
@@ -107,7 +106,7 @@ def handle_menu(update, context, access_token):
         return "HANDLE_DESCRIPTION"
     else:
         message_text = ''
-        keyboard = []
+        buttons = []
         cart_id = update.callback_query.from_user.id
         response = get_cart_items(access_token, cart_id)
         products = response['data']
@@ -122,11 +121,15 @@ def handle_menu(update, context, access_token):
             message_text += f'{product_name}\n{description}\n{price} за упаковку\n' \
                             f'{quantity} упаковок в корзине на сумму {product_sum}\n\n'
 
-            keyboard.append([InlineKeyboardButton(f'Убрать из корзины {product_name}',
-                                                  callback_data=cart_item_id)])
+            buttons.append(InlineKeyboardButton(f'Убрать из корзины {product_name}',
+                                                callback_data=cart_item_id))
 
-        keyboard.append([InlineKeyboardButton('В меню', callback_data='menu')])
-        reply_markup = InlineKeyboardMarkup(keyboard)
+        reply_markup = InlineKeyboardMarkup(built_menu(
+            buttons=buttons,
+            n_cols=1,
+            footer_buttons=[InlineKeyboardButton('В меню',
+                                                 callback_data='menu')])
+        )
 
         message_text = f'{message_text}Итого: {total_price}'
         context.bot.send_message(
