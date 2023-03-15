@@ -127,8 +127,8 @@ def handle_menu(update, context, access_token):
         reply_markup = InlineKeyboardMarkup(built_menu(
             buttons=buttons,
             n_cols=1,
-            footer_buttons=[InlineKeyboardButton('В меню',
-                                                 callback_data='menu')])
+            footer_buttons=[InlineKeyboardButton('В меню', callback_data='menu'),
+                            InlineKeyboardButton('Оплата', callback_data='payment')])
         )
 
         message_text = f'{message_text}Итого: {total_price}'
@@ -181,9 +181,19 @@ def handle_cart(update, context, access_token):
 
     Если пользователь нажал кнопку "Меню", то бот выводит на экран
     исходный перечень продуктов и переводит его в состояние HANDLE_MENU.
+
+    Если пользователь нажал кнопку "Оплата", то бот запросит почту пользователя
+    и переводит его в состояние WAITING_EMAIL.
     """
     if update.callback_query.data == 'menu':
         return menu(update, context, access_token)
+    elif update.callback_query.data == 'payment':
+        text = 'Напишите, пожалуйста, вашу электронную почту'
+        context.bot.send_message(
+            text=text,
+            chat_id=update.effective_chat.id,
+        )
+        return 'WAITING_EMAIL'
     else:
         remove_item_from_cart(
             access_token,
@@ -191,6 +201,11 @@ def handle_cart(update, context, access_token):
             cart_item_id=update.callback_query.data,
         )
         return 'HANDLE_CART'
+
+
+def handle_waiting_email(update, context):
+    user_reply = update.message.text
+    update.message.reply_text(f'Ваша почта: {user_reply}')
 
 
 def handle_users_reply(update, context, access_token):
@@ -225,11 +240,11 @@ def handle_users_reply(update, context, access_token):
         'HANDLE_MENU': handle_menu,
         'HANDLE_DESCRIPTION': handle_description,
         'HANDLE_CART': handle_cart,
+        'WAITING_EMAIL': handle_waiting_email,
     }
 
     state_handler = states_functions[user_state]
-    if user_state in ('MENU', 'HANDLE_MENU', 'HANDLE_DESCRIPTION',
-                      'HANDLE_CART'):
+    if user_state != 'WAITING_EMAIL':
         try:
             next_state = state_handler(update, context, access_token)
             db.set(chat_id, next_state)
