@@ -12,7 +12,7 @@ from telegram.ext import Filters, Updater
 
 from molti_api_requests import get_all_products, get_access_token, get_product, \
     get_product_main_image_id, download_product_main_image, \
-    add_product_to_cart, get_cart_items, get_cart
+    add_product_to_cart, get_cart_items, remove_item_from_cart
 from utils import built_menu
 
 _database = None
@@ -43,7 +43,7 @@ def menu(update, context, access_token):
         keyboard,
         2,
         footer_buttons=[
-            InlineKeyboardButton('Корзина', callback_data='корзина')])
+            InlineKeyboardButton('Корзина', callback_data='cart')])
     )
     message_text = '\nКакой товар вас интересует?'
 
@@ -65,7 +65,7 @@ def handle_menu(update, context, access_token):
     Если пользователь нажал кнопку "Корзина", то отправляет ему описание
     содержимого корзины и переводит его в состояние HANDLE_CART.
     """
-    if update.callback_query.data != 'корзина':
+    if update.callback_query.data != 'cart':
         product_id = update.callback_query.data
         main_image_id = get_product_main_image_id(access_token, product_id)
         main_image_path = download_product_main_image(access_token,
@@ -93,8 +93,8 @@ def handle_menu(update, context, access_token):
                 InlineKeyboardButton('5 упаковок',
                                      callback_data=f'{product_id}_5')
             ],
-            [InlineKeyboardButton('Корзина', callback_data='корзина')],
-            [InlineKeyboardButton('В меню', callback_data='в меню')]
+            [InlineKeyboardButton('Корзина', callback_data='cart')],
+            [InlineKeyboardButton('В меню', callback_data='menu')]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -107,13 +107,14 @@ def handle_menu(update, context, access_token):
         return "HANDLE_DESCRIPTION"
     else:
         message_text = ''
+        keyboard = []
         cart_id = update.callback_query.from_user.id
-        print(cart_id)
         response = get_cart_items(access_token, cart_id)
         products = response['data']
         total_price = response['meta']['display_price']['without_tax']['formatted']
         for product in products:
             product_name = product["name"]
+            cart_item_id = product["id"]
             description = product["description"]
             price = product["meta"]["display_price"]["without_tax"]["unit"]["formatted"]
             quantity = product["quantity"]
@@ -121,10 +122,17 @@ def handle_menu(update, context, access_token):
             message_text += f'{product_name}\n{description}\n{price} за упаковку\n' \
                             f'{quantity} упаковок в корзине на сумму {product_sum}\n\n'
 
+            keyboard.append([InlineKeyboardButton(f'Убрать из корзины {product_name}',
+                                                  callback_data=cart_item_id)])
+
+        keyboard.append([InlineKeyboardButton('В меню', callback_data='menu')])
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
         message_text = f'{message_text}Итого: {total_price}'
         context.bot.send_message(
             text=message_text,
             chat_id=update.effective_chat.id,
+            reply_markup=reply_markup,
         )
         return "HANDLE_CART"
 
@@ -144,9 +152,9 @@ def handle_description(update, context, access_token):
     исходный перечень продуктов и переводит его в состояние HANDLE_MENU.
 
     """
-    if update.callback_query.data == 'в меню':
+    if update.callback_query.data == 'menu':
         return menu(update, context, access_token)
-    elif update.callback_query.data == 'корзина':
+    elif update.callback_query.data == 'cart':
         return handle_menu(update, context, access_token)
     else:
         user_id = update.callback_query.from_user.id
@@ -162,15 +170,24 @@ def handle_description(update, context, access_token):
         return "HANDLE_DESCRIPTION"
 
 
-def handler_cart(update, context, access_token):
+def handle_cart(update, context, access_token):
     """
-    Хэндлер для состояния HANDLE_MENU.
+    Хэндлер для состояния HANDLE_CART.
 
-    Бот отправляет пользователю подробное описание выбранного продукта и
-    переводит его в состояние HANDLE_DESCRIPTION, если пользователь выберет
-    необходимое для покупки количество товара.
+    Удаляет товар из корзины при нажатии на кнопку "Удалить <название товара>".
+
+    Если пользователь нажал кнопку "Меню", то бот выводит на экран
+    исходный перечень продуктов и переводит его в состояние HANDLE_MENU.
     """
-    pass
+    if update.callback_query.data == 'menu':
+        return menu(update, context, access_token)
+    else:
+        remove_item_from_cart(
+            access_token,
+            cart_id=update.callback_query.from_user.id,
+            cart_item_id=update.callback_query.data,
+        )
+        return 'HANDLE_CART'
 
 
 def handle_users_reply(update, context, access_token):
@@ -204,11 +221,12 @@ def handle_users_reply(update, context, access_token):
         'MENU': menu,
         'HANDLE_MENU': handle_menu,
         'HANDLE_DESCRIPTION': handle_description,
-        'HANDLE_CART ': handler_cart,
+        'HANDLE_CART': handle_cart,
     }
 
     state_handler = states_functions[user_state]
-    if user_state in ('MENU', 'HANDLE_MENU', 'HANDLE_DESCRIPTION', 'HANDLE_CART'):
+    if user_state in ('MENU', 'HANDLE_MENU', 'HANDLE_DESCRIPTION',
+                      'HANDLE_CART'):
         try:
             next_state = state_handler(update, context, access_token)
             db.set(chat_id, next_state)

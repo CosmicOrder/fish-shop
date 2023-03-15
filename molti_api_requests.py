@@ -137,19 +137,20 @@ def get_cart_items(
     return response.json()
 
 
-def get_cart(
+def remove_item_from_cart(
         access_token,
-        card_id=697013533,
+        cart_id,
+        cart_item_id,
 ):
-    url = f'https://api.moltin.com/v2/carts/{card_id}'
+    url = f'https://api.moltin.com/v2/carts/{cart_id}/items/{cart_item_id}'
 
     headers = {
         'Authorization': f'Bearer {access_token}'
     }
 
-    response = requests.get(url, headers=headers)
+    response = requests.delete(url, headers=headers)
     response.raise_for_status()
-    return response.json()
+    return response
 
 
 if __name__ == '__main__':
@@ -158,9 +159,4 @@ if __name__ == '__main__':
     moltin_client_secret = os.getenv('MOLTIN_CLIENT_SECRET')
 
     token = get_access_token(moltin_client_id, moltin_client_secret)
-    # product_id = '66f1bca0-a9a8-445d-b0c1-1f1ba4f65492'
-
-    # get_all_products(token)
-    # get_product(token, product_id)
-    # main_image_id = get_product_main_image_id(token, product_id)
-    # download_product_main_image(token, main_image_id)
+    print(token)
