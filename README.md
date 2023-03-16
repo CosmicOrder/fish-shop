@@ -38,13 +38,13 @@ pip install -r requirements.txt
 
 Доступны следующие переменные:
 
-- `FISH_SHOP_TG_TOKEN` – токен, который необходим для управления телеграм-ботом рыбного магазина через API
-- `MOLTIN_CLIENT_ID` – токен, который необходим для управления ВК-ботом викторины через API
-- `MOLTIN_CLIENT_SECRET` – путь до текстового файла с вопросами и ответами для викторины
-- `DATABASE_HOST` – адрес базы данных вида: `redis-13965.f18.us-east-4-9.wc1.cloud.redislabs.com`
-- `DATABASE_PORT` – порт по которому будет произведено соединения с базой данных
-- `REDIS_USERNAME` – имя пользователя базы данных
-- `DATABASE_PASSWORD` – пароль базы данных
+- `FISH_SHOP_TG_TOKEN` – токен, который необходим для управления телеграм-ботом рыбного магазина через API.
+- `MOLTIN_CLIENT_ID` – ID клиента сервиса Elastic Path Commerce Cloud store.
+- `MOLTIN_CLIENT_SECRET` – секретный ключ клиента сервиса Elastic Path Commerce Cloud store.
+- `DATABASE_HOST` – адрес базы данных вида: `redis-13965.f18.us-east-4-9.wc1.cloud.redislabs.com`.
+- `DATABASE_PORT` – порт по которому будет произведено соединения с базой данных.
+- `REDIS_USERNAME` – имя пользователя базы данных.
+- `DATABASE_PASSWORD` – пароль базы данных.
 
 
 ## Запуск
