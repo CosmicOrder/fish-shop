@@ -1,8 +1,6 @@
-"""
-Работает с этими модулями:
-"""
 import functools
 import os
+import re
 
 import redis
 from dotenv import load_dotenv
@@ -12,7 +10,7 @@ from telegram.ext import Filters, Updater
 
 from molti_api_requests import get_all_products, get_access_token, get_product, \
     get_product_main_image_id, download_product_main_image, \
-    add_product_to_cart, get_cart_items, remove_item_from_cart
+    add_product_to_cart, get_cart_items, remove_item_from_cart, create_customer
 from utils import built_menu
 
 _database = None
@@ -193,19 +191,34 @@ def handle_cart(update, context, access_token):
             text=text,
             chat_id=update.effective_chat.id,
         )
-        return 'WAITING_EMAIL'
+        return "WAITING_EMAIL"
     else:
         remove_item_from_cart(
             access_token,
             cart_id=update.callback_query.from_user.id,
             cart_item_id=update.callback_query.data,
         )
-        return 'HANDLE_CART'
+        return "HANDLE_CART"
 
 
-def handle_waiting_email(update, context):
+def handle_waiting_email(update, context, access_token):
+    """
+        Хэндлер для состояния WAITING_EMAIL.
+
+        Как только пользователь введёт свою почту, бот создаст клиента в CMS
+    """
+    email_pattern = r'[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$'
     user_reply = update.message.text
-    update.message.reply_text(f'Ваша почта: {user_reply}')
+    if re.fullmatch(email_pattern, user_reply):
+        update.message.reply_text(f'Ваша почта: {user_reply}')
+        create_customer(
+            access_token,
+            email=user_reply,
+        )
+    else:
+        error_text = 'Введена некорректная почта. Попробуйте ещё раз.'
+        update.message.reply_text(error_text)
+        return "WAITING_EMAIL"
 
 
 def handle_users_reply(update, context, access_token):
@@ -244,18 +257,11 @@ def handle_users_reply(update, context, access_token):
     }
 
     state_handler = states_functions[user_state]
-    if user_state != 'WAITING_EMAIL':
-        try:
-            next_state = state_handler(update, context, access_token)
-            db.set(chat_id, next_state)
-        except Exception as err:
-            print(err)
-    else:
-        try:
-            next_state = state_handler(update, context)
-            db.set(chat_id, next_state)
-        except Exception as err:
-            print(err)
+    try:
+        next_state = state_handler(update, context, access_token)
+        db.set(chat_id, next_state)
+    except Exception as err:
+        print(err)
 
 
 def get_database_connection():

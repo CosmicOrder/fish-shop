@@ -150,7 +150,31 @@ def remove_item_from_cart(
 
     response = requests.delete(url, headers=headers)
     response.raise_for_status()
-    return response
+    return response.json()
+
+
+def create_customer(
+        access_token,
+        email,
+        name='Unknown',
+):
+    url = 'https://api.moltin.com/v2/customers'
+
+    headers = {
+        'Authorization': f'Bearer {access_token}'
+    }
+
+    payload = {
+        'data': {
+            'type': 'customer',
+            'name': name,
+            'email': email,
+        },
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    response.raise_for_status()
+    return response.json()
 
 
 if __name__ == '__main__':
