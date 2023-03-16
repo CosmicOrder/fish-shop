@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from pprint import pprint
 
 import requests
 from dotenv import load_dotenv
@@ -183,4 +182,3 @@ if __name__ == '__main__':
     moltin_client_secret = os.getenv('MOLTIN_CLIENT_SECRET')
 
     token = get_access_token(moltin_client_id, moltin_client_secret)
-    print(token)

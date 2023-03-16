@@ -286,7 +286,6 @@ def main():
     access_token = get_access_token(moltin_client_id, client_secret)
     handle_users_reply_partial = functools.partial(handle_users_reply,
                                                    access_token=access_token)
-    print(access_token)
 
     updater = Updater(fish_shop_tg_token)
     dispatcher = updater.dispatcher
