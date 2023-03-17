@@ -77,11 +77,6 @@ def handle_menu(update, context, access_token):
         description = product['attributes']['description']
         price = product['meta']['display_price']['without_tax']['formatted']
 
-        context.bot.delete_message(
-            chat_id=update.effective_chat.id,
-            message_id=update.effective_message.message_id,
-        )
-
         keyboard = [
             [
                 InlineKeyboardButton('1 упаковка',
@@ -101,6 +96,11 @@ def handle_menu(update, context, access_token):
             photo=main_image,
             caption=f'{product_name}\n\n{description}\n\n{price}',
             reply_markup=reply_markup,
+        )
+
+        context.bot.delete_message(
+            chat_id=update.effective_chat.id,
+            message_id=update.effective_message.message_id,
         )
         return "HANDLE_DESCRIPTION"
     else:
