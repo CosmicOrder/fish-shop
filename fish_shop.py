@@ -1,6 +1,7 @@
 import functools
 import os
 import re
+import textwrap
 
 import redis
 from dotenv import load_dotenv
@@ -116,8 +117,13 @@ def handle_menu(update, context, access_token):
             price = product["meta"]["display_price"]["without_tax"]["unit"]["formatted"]
             quantity = product["quantity"]
             product_sum = product["meta"]["display_price"]["without_tax"]["value"]["formatted"]
-            message_text += f'{product_name}\n{description}\n{price} за упаковку\n' \
-                            f'{quantity} упаковок в корзине на сумму {product_sum}\n\n'
+            message_text += textwrap.dedent(f'''
+                            {product_name}
+                            {description}
+                            {price} за упаковку
+                            {quantity} упаковок в корзине на сумму {product_sum}
+                            
+                            ''')
 
             buttons.append(InlineKeyboardButton(f'Убрать из корзины {product_name}',
                                                 callback_data=cart_item_id))
