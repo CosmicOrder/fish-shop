@@ -16,7 +16,7 @@ from utils import built_menu
 _database = None
 
 
-def menu(update, context, access_token):
+def get_menu(update, context, access_token):
     """
     Хэндлер для состояния MENU.
 
@@ -154,7 +154,7 @@ def handle_description(update, context, access_token):
 
     """
     if update.callback_query.data == 'menu':
-        return menu(update, context, access_token)
+        return get_menu(update, context, access_token)
     elif update.callback_query.data == 'cart':
         return handle_menu(update, context, access_token)
     else:
@@ -184,7 +184,7 @@ def handle_cart(update, context, access_token):
     и переводит его в состояние WAITING_EMAIL.
     """
     if update.callback_query.data == 'menu':
-        return menu(update, context, access_token)
+        return get_menu(update, context, access_token)
     elif update.callback_query.data == 'payment':
         text = 'Напишите, пожалуйста, вашу электронную почту'
         context.bot.send_message(
@@ -249,7 +249,7 @@ def handle_users_reply(update, context, access_token):
         user_state = db.get(chat_id).decode("utf-8")
 
     states_functions = {
-        'MENU': menu,
+        'MENU': get_menu,
         'HANDLE_MENU': handle_menu,
         'HANDLE_DESCRIPTION': handle_description,
         'HANDLE_CART': handle_cart,
