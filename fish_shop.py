@@ -11,7 +11,7 @@ from telegram.ext import Filters, Updater
 from molti_api_requests import get_all_products, get_access_token, get_product, \
     get_product_main_image_id, download_product_main_image, \
     add_product_to_cart, get_cart_items, remove_item_from_cart, create_customer
-from utils import built_menu
+from build_menu import built_menu
 
 _database = None
 
