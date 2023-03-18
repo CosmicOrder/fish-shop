@@ -2,6 +2,7 @@ import functools
 import os
 import re
 import textwrap
+import time
 
 import redis
 from dotenv import load_dotenv
@@ -303,4 +304,6 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    while True:
+        main()
+        time.sleep(10000)
